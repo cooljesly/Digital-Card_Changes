@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Digital Business Card Maker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --brand-color: #a31212;
+            --brand-fill: #FFFFFF;
+            --brand-stroke: #FFD8D9;
+            --qr-stroke: #FFC9CA;
+            --bg-gray: #f4f7f9;
+        }
+
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; background: var(--bg-gray); color: #333; overflow-x: hidden; }
+
+        .header { background: white; padding: 15px 50px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); font-weight: bold; }
+        .main-container { display: flex; height: calc(100vh - 70px); max-width: 1400px; margin: 0 auto; gap: 30px; padding: 20px; box-sizing: border-box; }
+
+        /* Form Side */
+        .form-side { flex: 1; background: white; border-radius: 15px; padding: 30px; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .step { display: none; }
+        .step.active { display: block; }
+        h2 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .field { margin-bottom: 18px; }
+        label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; }
+        input[type="text"], input[type="email"], select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+
+        /* Gallery */
+        .gallery-toggle { background: #f0f0f0; border: 1px solid #ddd; width: 100%; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .gallery-container { display: none; border: 1px solid #ddd; border-top: none; padding: 15px; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; background: #fafafa; }
+        .gallery-container.active { display: block; }
+        .pic-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 15px; max-height: 250px; overflow-y: auto; padding: 10px 0; }
+        .gallery-wrapper { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .gallery-item { width: 65px; height: 65px; border-radius: 50%; object-fit: cover; cursor: pointer; border: 3px solid transparent; transition: 0.2s; background: white; }
+        .gallery-item.selected { border-color: var(--brand-color); transform: scale(1.05); }
+        .item-label { font-size: 0.75rem; color: #555; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 70px; }
+
+        /* Mockup Design */
+        .preview-side { flex: 0.8; display: flex; justify-content: center; align-items: flex-start; padding-top: 20px; }
+        .phone-mockup { width: 380px; background: white; border-radius: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.12); overflow: hidden; position: sticky; top: 20px; border: 1px solid #E7E7F1; z-index: 1; }
+
+        .phone-mockup::before, .phone-mockup::after { content: ''; position: absolute; top: 50%; width: 260px; height: 90%; transform: translateY(-50%); border-radius: 50%; filter: blur(55px); opacity: 0.6; z-index: 0; pointer-events: none; background: var(--brand-fill); transition: background 0.3s ease; }
+        .phone-mockup::before { left: -180px; } .phone-mockup::after { right: -180px; }
+        .phone-mockup.qr-mode::before, .phone-mockup.qr-mode::after { display: none; }
+
+        .infoedge-tag-header { width: 90px; height: 35px; background: #F7F7F9; margin: 0 auto; border-radius: 0 0 10px 10px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2; }
+        .infoedge-tag-header img { height: 14px; }
+
+        .marquee-wrapper { display: none; width: 100%; overflow: hidden; padding: 25px 0 10px; mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent); position: relative; z-index: 2; }
+        .marquee-content { display: flex; gap: 26px; animation: scroll-logo 20s linear infinite; width: max-content; }
+        .marquee-content img { height: 20px; opacity: 0.7; }
+        @keyframes scroll-logo { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+        .card-header { height: 80px; display: flex; justify-content: center; align-items: center; padding: 30px 40px 0; position: relative; z-index: 2; }
+        .card-logo { max-width: 100%; max-height: 70px; object-fit: contain; }
+
+        .profile-container { margin: 35px auto; width: 140px; height: 140px; display: none; position: relative; align-items: center; justify-content: center; z-index: 2; }
+        .profile-main { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; z-index: 2; position: relative; }
+        .profile-container::after { content: ''; position: absolute; width: 135px; height: 135px; border-radius: 50%; border: 3px solid #EEEEEE; z-index: 1; }
+
+        .card-content { padding: 0 40px; text-align: center; position: relative; z-index: 2; }
+        .name-display { color: var(--brand-color); font-size: 2.1rem; font-weight: 700; margin-bottom: 5px; }
+        .title-display { color: #333; font-size: 1.1rem; margin-bottom: 25px; }
+
+        .icon-row { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; padding: 0 40px; flex-wrap: nowrap; }
+        .icon-circle { width: 54px; height: 54px; border-radius: 50%; display: none; align-items: center; justify-content: center; border: 1.5px solid var(--brand-stroke); background: linear-gradient(to bottom, #FFFFFF 0%, var(--brand-fill) 100%); flex-shrink: 0; text-decoration: none; }
+        .icon-circle img { width: 22px; height: 22px; }
+
+        .add-btn { width: calc(100% - 80px); margin: 0 40px 35px; padding: 16px; background: #265DF5; color: white; border: none; font-weight: 700; cursor: pointer; border-radius: 100px; font-size: 1rem; position: relative; z-index: 2; }
+
+        .qr-view-container { padding: 20px 40px 40px; text-align: center; display: none; position: relative; z-index: 2; }
+        .qr-border-frame { display: inline-block; padding: 15px; border: 2px solid var(--qr-stroke); border-radius: 20px; background: white; margin-bottom: 30px; }
+        
+        /* Fix for double QR code */
+        #qr-canvas { display: flex; justify-content: center; align-items: center; }
+        #qr-canvas img { display: none !important; } /* Hide the duplicate image tag */
+        #qr-canvas canvas { display: block !important; margin: 0 auto; }
+
+        .nav-btn { width: 100%; padding: 14px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .primary { background: #000; color: white; }
+        .secondary { background: #e0e0e0; color: #333; }
+        
+        .dropdown-container { position: relative; width: 100%; }
+        .dropdown-content { display: none; flex-direction: column; background: white; border: 1px solid #ddd; border-radius: 8px; width: 100%; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-top: 5px; z-index: 100; }
+        .dropdown-content button { padding: 12px; border: none; background: none; text-align: left; cursor: pointer; border-bottom: 1px solid #eee; width: 100%; font-size: 0.9rem; }
+        .dropdown-content.active { display: flex; }
+
+        .view-mode .header, .view-mode .form-side { display: none; }
+        .view-mode .main-container { justify-content: center; height: 100vh; padding: 0; margin: 0; max-width: 100%; }
+        .view-mode .phone-mockup { position: relative; top: 0; box-shadow: none; border: none; height: 100vh; width: 100%; max-width: 500px; border-radius: 0; }
+    </style>
+</head>
+<body>
+
+<div class="header">Digital Business Card Maker</div>
+
+<div class="main-container">
+    <div class="form-side">
+        <div id="step1" class="step active">
+            <h2>Design Your Card</h2>
+            <div class="field">
+                <label>Select Brand</label>
+                <select id="in-brand" onchange="updateBrand(this.value)">
+                    <option value="quadrangle">Quadrangle</option>
+                    <option value="naukri">Naukri</option>
+                    <option value="naukrigulf">Naukrigulf</option>
+                    <option value="shiksha">Shiksha</option>
+                    <option value="jeevansati">Jeevansati</option>
+                    <option value="99acres">99acres</option>
+                    <option value="naukricampus">Naukri Campus</option>
+                    <option value="jobhai">Job Hai</option>
+                    <option value="ambitionbox">AmbitionBox</option>
+                    <option value="infoedge">Infoedge</option>
+                </select>
+            </div>
+            
+            <div class="field">
+                <label>Profile Image</label>
+                <input type="text" id="in-img" placeholder="Paste URL or browse below..." oninput="handlePic(this.value)">
+                <button class="gallery-toggle" onclick="toggleGallery()">
+                    <span>Browse Image Gallery</span>
+                    <span id="toggle-icon">▼</span>
+                </button>
+                <div class="gallery-container" id="gallery-container">
+                    <div style="margin-bottom:10px;">
+                        <input type="text" id="pic-search" placeholder="Search by name..." onkeyup="filterGallery()" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ddd;">
+                    </div>
+                    <div class="pic-gallery" id="pic-gallery">Loading...</div>
+                </div>
+            </div>
+
+            <div class="field"><label>Name</label><input type="text" id="in-name" placeholder="Full Name"></div>
+            <div class="field"><label>Job Title</label><input type="text" id="in-title" placeholder="Job Title"></div>
+            <div class="field"><label>Phone</label><input type="text" id="in-phone" placeholder="+91 99999 99999"></div>
+            <div class="field"><label>Email</label><input type="email" id="in-email" placeholder="email@domain.com"></div>
+            <div class="field"><label>Website</label><input type="text" id="in-web" placeholder="www.website.com"></div>
+            <div class="field"><label>Location</label><input type="text" id="in-loc" placeholder="City, Country"></div>
+            
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
+                <input type="checkbox" id="toggle-save" checked onchange="updateBtnVisibility()">
+                <label style="margin:0;">Show "Add to Contacts" Button</label>
+            </div>
+            <button class="nav-btn primary" onclick="moveStep(2)">Generate Card →</button>
+        </div>
+
+        <div id="step2" class="step">
+            <h2>Card Ready!</h2>
+            <div class="dropdown-container">
+                <button class="nav-btn primary" onclick="toggleShareDropdown()">Share Card ▾</button>
+                <div class="dropdown-content" id="share-dropdown">
+                    <button onclick="triggerShare('whatsapp')">WhatsApp</button>
+                    <button onclick="triggerShare('email')">Email</button>
+                    <button onclick="triggerShare('sms')">Message (SMS)</button>
+                    <button onclick="copyLink()">Copy Link</button>
+                </div>
+            </div>
+            <button class="nav-btn secondary" onclick="downloadImage()">Download QR Template</button>
+            <button class="nav-btn secondary" onclick="moveStep(1)">← Edit Details</button>
+        </div>
+    </div>
+
+    <div class="preview-side">
+        <div class="phone-mockup" id="capture-area">
+            <div class="infoedge-tag-header" id="brand-tag"><img src="infoedge.svg"></div>
+            <div class="marquee-wrapper" id="brand-marquee">
+                <div class="marquee-content">
+                    <img src="Naukri.svg"><img src="Naukrigulf.svg"><img src="99acres.svg"><img src="Shiksha.svg"><img src="Jeevansati.svg"><img src="Quadrangle.svg"><img src="Ambitionbox.svg"><img src="jobhai.svg">
+                    <img src="Naukri.svg"><img src="Naukrigulf.svg"><img src="99acres.svg"><img src="Shiksha.svg"><img src="Jeevansati.svg"><img src="Quadrangle.svg"><img src="Ambitionbox.svg"><img src="jobhai.svg">
+                </div>
+            </div>
+            <div class="card-header" id="dynamic-header-area"><img src="Quadrangle.svg" id="display-logo" class="card-logo"></div>
+            <div id="vc-view">
+                <div class="profile-container" id="profile-cont"><img id="main-profile-pic" src="" class="profile-main"></div>
+                <div class="card-content">
+                    <div class="name-display" id="out-name">Name</div>
+                    <div class="title-display" id="out-title">Job Title</div>
+                    <div class="icon-row">
+                        <a href="" class="icon-circle" id="row-phone"><img src="Phone.svg"></a>
+                        <a href="" class="icon-circle" id="row-email"><img src="Email.svg"></a>
+                        <a href="" target="_blank" class="icon-circle" id="row-web"><img src="Website.svg"></a>
+                        <a href="" target="_blank" class="icon-circle" id="row-loc"><img src="Location.svg"></a>
+                    </div>
+                </div>
+                <button class="add-btn" id="save-btn-view" onclick="downloadVCF()">Add to Contacts</button>
+            </div>
+            <div id="qr-view" class="qr-view-container">
+                <div class="qr-border-frame"><div id="qr-canvas"></div></div>
+                <div class="name-display" id="qr-out-name">Name</div>
+                <div class="title-display" id="qr-out-title" style="margin-bottom:0;">Job Title</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const COLOR_MAP = {
+        quadrangle: { color: '#a31212', fill: '#FFEBEC', stroke: '#FFD8D9', qr: '#FFC9CA', logo: 'Quadrangle.svg' },
+        naukri: { color: '#1f70e0', fill: '#EAF3FF', stroke: '#D8EAFF', qr: '#C4D4FF', logo: 'Naukri.svg' },
+        naukrigulf: { color: '#008b45', fill: '#EEFDEC', stroke: '#C5EAC5', qr: '#ABD8B7', logo: 'Naukrigulf.svg' },
+        shiksha: { color: '#007a83', fill: '#E3F9FD', stroke: '#BFEEF4', qr: '#A3CBCF', logo: 'Shiksha.svg' },
+        jeevansati: { color: '#e62e52', fill: '#FDE4E8', stroke: '#F4BFC9', qr: '#EAB4C0', logo: 'Jeevansati.svg' },
+        '99acres': { color: '#0078db', fill: '#DEEEF8', stroke: '#CCE9FF', qr: '#B1CEE6', logo: '99acres.svg' },
+        naukricampus: { color: '#ff6633', fill: '#FFF4EA', stroke: '#F9CAB3', qr: '#FCCCBB', logo: 'Naukricampus.svg' },
+        jobhai: { color: '#2b9e91', fill: '#E5FDFB', stroke: '#AAE4D9', qr: '#B1DBD7', logo: 'jobhai.svg' },
+        ambitionbox: { color: '#3848ff', fill: '#E4EBFD', stroke: '#A8C1FF', qr: '#B1BBEF', logo: 'Ambitionbox.svg' },
+        infoedge: { color: '#4a4a4a', fill: '#D1D1D1', stroke: '#D0D0D0', qr: '#C6C6C6', logo: 'infoedge.svg' }
+    };
+
+    let currentFinalUrl = "";
+    const fields = ['name', 'title', 'phone', 'email', 'web', 'loc'];
+
+    async function initGallery() {
+        const gallery = document.getElementById('pic-gallery');
+        try {
+            const cacheBuster = "?v=" + new Date().getTime();
+            const response = await fetch('profile_pic/list.txt' + cacheBuster);
+            const data = await response.text();
+            const imageList = data.split('\n').map(line => line.trim()).filter(line => line !== "");
+            gallery.innerHTML = ""; 
+            imageList.forEach(imgName => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'gallery-wrapper';
+                wrapper.setAttribute('data-name', imgName.toLowerCase());
+                const imgEl = document.createElement('img');
+                imgEl.src = `profile_pic/${imgName}${cacheBuster}`;
+                imgEl.className = 'gallery-item';
+                imgEl.onclick = () => {
+                    document.querySelectorAll('.gallery-item').forEach(i => i.classList.remove('selected'));
+                    imgEl.classList.add('selected');
+                    document.getElementById('in-img').value = `profile_pic/${imgName}`;
+                    handlePic(`profile_pic/${imgName}${cacheBuster}`);
+                };
+                const label = document.createElement('span');
+                label.className = 'item-label';
+                label.innerText = imgName.split('.')[0].replace(/_/g, ' ');
+                wrapper.appendChild(imgEl);
+                wrapper.appendChild(label);
+                gallery.appendChild(wrapper);
+            });
+        } catch (err) { gallery.innerHTML = "<p>Error loading gallery.</p>"; }
+    }
+
+    function toggleGallery() {
+        const container = document.getElementById('gallery-container');
+        container.classList.toggle('active');
+        document.getElementById('toggle-icon').innerText = container.classList.contains('active') ? '▲' : '▼';
+    }
+
+    function filterGallery() {
+        const query = document.getElementById('pic-search').value.toLowerCase();
+        document.querySelectorAll('.gallery-wrapper').forEach(item => {
+            item.style.display = item.getAttribute('data-name').includes(query) ? 'flex' : 'none';
+        });
+    }
+
+    function updateBrand(brandId) {
+        const b = COLOR_MAP[brandId];
+        document.documentElement.style.setProperty('--brand-color', b.color);
+        document.documentElement.style.setProperty('--brand-fill', b.fill);
+        document.documentElement.style.setProperty('--brand-stroke', b.stroke);
+        document.documentElement.style.setProperty('--qr-stroke', b.qr);
+        document.getElementById('display-logo').src = b.logo;
+        
+        const isInfo = brandId === 'infoedge';
+        const isQR = document.getElementById('qr-view').style.display === 'block';
+        document.getElementById('brand-marquee').style.display = (isInfo && !isQR) ? 'block' : 'none';
+        document.getElementById('brand-tag').style.display = (!isInfo && !isQR) ? 'flex' : 'none';
+    }
+
+    function handlePic(url) {
+        const pic = document.getElementById('main-profile-pic');
+        const cont = document.getElementById('profile-cont');
+        if (url && url.trim() !== "") { 
+            pic.src = url.includes('?') ? url : url + "?v=" + new Date().getTime();
+            cont.style.display = 'flex'; 
+        } else { cont.style.display = 'none'; }
+    }
+
+    function updateLinkHref(f, val) {
+        const el = document.getElementById('row-' + f);
+        if (!el) return;
+        if (f === 'phone') el.href = "tel:" + val.replace(/\s+/g, '');
+        else if (f === 'email') el.href = "mailto:" + val;
+        else if (f === 'web') el.href = val.startsWith('http') ? val : 'https://' + val;
+        else if (f === 'loc') el.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(val);
+    }
+
+    fields.forEach(f => {
+        const inputEl = document.getElementById('in-' + f);
+        if(inputEl) {
+            inputEl.addEventListener('input', function() {
+                const val = this.value;
+                if(f === 'name' || f === 'title') {
+                    document.getElementById('out-' + f).innerText = val || (f === 'name' ? 'Name' : 'Job Title');
+                    document.getElementById('qr-out-' + f).innerText = val || (f === 'name' ? 'Name' : 'Job Title');
+                } else {
+                    const icon = document.getElementById('row-' + f);
+                    if(icon) icon.style.display = val ? 'flex' : 'none';
+                    updateLinkHref(f, val);
+                }
+            });
+        }
+    });
+
+    function moveStep(step) {
+        document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+        document.getElementById('step' + step).classList.add('active');
+        
+        const mockup = document.getElementById('capture-area');
+        const isQR = step === 2;
+        
+        document.getElementById('vc-view').style.display = isQR ? 'none' : 'block';
+        document.getElementById('qr-view').style.display = isQR ? 'block' : 'none';
+        
+        if (isQR) {
+            mockup.classList.add('qr-mode');
+            updateQR();
+        } else {
+            mockup.classList.remove('qr-mode');
+        }
+        
+        updateBrand(document.getElementById('in-brand').value);
+    }
+
+    function updateQR() {
+        const brand = document.getElementById('in-brand').value;
+        const params = new URLSearchParams();
+        params.set('brand', brand);
+        fields.forEach(f => {
+            const val = document.getElementById('in-' + f).value;
+            if (val) params.set(f.charAt(0), val);
+        });
+        params.set('i', document.getElementById('in-img').value);
+        params.set('b', document.getElementById('toggle-save').checked ? '1' : '0');
+        
+        currentFinalUrl = window.location.origin + window.location.pathname + "?" + params.toString();
+        
+        const qrBox = document.getElementById('qr-canvas');
+        
+        // FIX: Clear existing QR code before generating new one
+        qrBox.innerHTML = "";
+        
+        new QRCode(qrBox, { 
+            text: currentFinalUrl, 
+            width: 180, 
+            height: 180, 
+            colorDark : COLOR_MAP[brand].color,
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
+    }
+
+    function downloadVCF() {
+        const isViewMode = document.body.classList.contains('view-mode');
+        const n = isViewMode ? document.getElementById('out-name').innerText : document.getElementById('in-name').value || "Contact";
+        const t = isViewMode ? document.getElementById('out-title').innerText : document.getElementById('in-title').value || "";
+        const p = isViewMode ? document.getElementById('row-phone').href.replace('tel:', '') : document.getElementById('in-phone').value || "";
+        const e = isViewMode ? document.getElementById('row-email').href.replace('mailto:', '') : document.getElementById('in-email').value || "";
+        const w = isViewMode ? document.getElementById('row-web').href : document.getElementById('in-web').value || "";
+        const l = isViewMode ? "" : document.getElementById('in-loc').value || "";
+
+        const vcf = [
+            'BEGIN:VCARD',
+            'VERSION:3.0',
+            `FN:${n}`,
+            `TITLE:${t}`,
+            `TEL;TYPE=CELL:${p}`,
+            `EMAIL;TYPE=INTERNET:${e}`,
+            `URL:${w}`,
+            `ADR:;;${l};;;;`,
+            'END:VCARD'
+        ].join('\n');
+
+        const blob = new Blob([vcf], { type: "text/vcard" });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${n.replace(/\s+/g, '_')}.vcf`;
+        a.click();
+    }
+
+    function downloadImage() {
+        const area = document.getElementById('capture-area');
+        setTimeout(() => {
+            html2canvas(area, { 
+                useCORS: true, 
+                scale: 3,
+                backgroundColor: "#ffffff",
+                logging: false
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'DigitalCard_QR.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }, 500); 
+    }
+
+    function toggleShareDropdown() { document.getElementById('share-dropdown').classList.toggle('active'); }
+    function triggerShare(p) {
+        const text = `Connect with me: ${currentFinalUrl}`;
+        if(p === 'whatsapp') window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+        else if(p === 'sms') window.open(`sms:?body=${encodeURIComponent(text)}`, '_self');
+        else if(p === 'email') window.open(`mailto:?subject=Contact Info&body=${encodeURIComponent(text)}`, '_self');
+    }
+    function copyLink() { navigator.clipboard.writeText(currentFinalUrl).then(() => alert("Link Copied!")); }
+    function updateBtnVisibility() { document.getElementById('save-btn-view').style.display = document.getElementById('toggle-save').checked ? 'block' : 'none'; }
+
+    window.onload = () => {
+        initGallery();
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('n') || urlParams.has('brand')) {
+            document.body.classList.add('view-mode');
+            const brand = urlParams.get('brand') || 'quadrangle';
+            updateBrand(brand);
+            
+            const name = urlParams.get('n') || 'Name';
+            const title = urlParams.get('t') || 'Job Title';
+            document.getElementById('out-name').innerText = name;
+            document.getElementById('out-title').innerText = title;
+            handlePic(urlParams.get('i'));
+
+            const map = { p:'phone', e:'email', w:'web', l:'loc' };
+            for(let k in map) {
+                const val = urlParams.get(k);
+                if(val) {
+                    const row = document.getElementById('row-' + map[k]);
+                    if(row) {
+                        row.style.display = 'flex';
+                        updateLinkHref(map[k], val);
+                    }
+                }
+            }
+            document.getElementById('save-btn-view').style.display = urlParams.get('b') === '0' ? 'none' : 'block';
+        }
+    };
+</script>
+</body>
+</html>
