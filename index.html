@@ -76,7 +76,8 @@
         .qr-border-frame { display: inline-block; padding: 15px; border: 2px solid var(--qr-stroke); border-radius: 20px; background: white; margin-bottom: 30px; }
         
         #qr-canvas { display: flex; justify-content: center; align-items: center; min-height: 180px; }
-        #qr-canvas img, #qr-canvas svg { display: none !important; } 
+        /* Prevent duplicate images and ensure canvas is captured */
+        #qr-canvas img { display: none !important; } 
         #qr-canvas canvas { display: block !important; margin: 0 auto; width: 180px !important; height: 180px !important; }
 
         .nav-btn { width: 100%; padding: 14px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; }
@@ -88,7 +89,6 @@
         .dropdown-content button { padding: 12px; border: none; background: none; text-align: left; cursor: pointer; border-bottom: 1px solid #eee; width: 100%; font-size: 0.9rem; }
         .dropdown-content.active { display: flex; }
 
-        /* VIEW MODE - CENTERED WITH PADDING */
         .view-mode .header, .view-mode .form-side { display: none !important; }
         .view-mode .main-container { 
             display: flex;
@@ -96,7 +96,7 @@
             align-items: center; 
             height: auto; 
             min-height: 100vh; 
-            padding: 40px 20px; /* Side pixels to avoid touching edges */
+            padding: 40px 20px; 
             margin: 0; 
             max-width: 100%; 
             background: var(--bg-gray);
@@ -376,7 +376,6 @@
             height: 180, 
             colorDark : COLOR_MAP[brand].color,
             colorLight : "#ffffff",
-            useSVG: false, // Ensures canvas is used for html2canvas compatibility
             correctLevel : QRCode.CorrectLevel.H
         });
     }
@@ -411,24 +410,27 @@
 
     function downloadImage() {
         const area = document.getElementById('capture-area');
-        setTimeout(() => {
-            html2canvas(area, { 
-                useCORS: true, 
-                scale: 3,
-                backgroundColor: "#ffffff",
-                logging: false,
-                onclone: (clonedDoc) => {
-                    // Force the QR canvas to be visible in the clone
-                    const qrCanvas = clonedDoc.querySelector('#qr-canvas canvas');
-                    if (qrCanvas) qrCanvas.style.display = 'block';
+        
+        // Use html2canvas to capture the element
+        html2canvas(area, { 
+            useCORS: true, 
+            scale: 3, // High resolution
+            backgroundColor: "#ffffff",
+            logging: false,
+            // Critical fix: ensure the canvas is captured specifically
+            onclone: (clonedDoc) => {
+                const qrCanvas = clonedDoc.querySelector('#qr-canvas canvas');
+                if (qrCanvas) {
+                    qrCanvas.style.display = 'block';
+                    qrCanvas.style.visibility = 'visible';
                 }
-            }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = 'DigitalCard_QR.png';
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-            });
-        }, 500); 
+            }
+        }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'DigitalCard_QR.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
     }
 
     function toggleShareDropdown() { document.getElementById('share-dropdown').classList.toggle('active'); }
