@@ -63,8 +63,6 @@
         .profile-container::after { content: ''; position: absolute; width: 135px; height: 135px; border-radius: 50%; border: 3px solid #EEEEEE; z-index: 1; }
 
         .card-content { padding: 0 40px; text-align: center; position: relative; z-index: 2; }
-padding here */
-        .no-photo .name-display { margin-top: 60px; }        
         .name-display { color: var(--brand-color); font-size: 2.1rem; font-weight: 700; margin-bottom: 5px; }
         .title-display { color: #333; font-size: 1.1rem; margin-bottom: 25px; }
 
@@ -72,22 +70,13 @@ padding here */
         .icon-circle { width: 54px; height: 54px; border-radius: 50%; display: none; align-items: center; justify-content: center; border: 1.5px solid var(--brand-stroke); background: linear-gradient(to bottom, #FFFFFF 0%, var(--brand-fill) 100%); flex-shrink: 0; text-decoration: none; }
         .icon-circle img { width: 22px; height: 22px; }
 
-* View Mode - Perfectly Centered with Stroke */
-        .view-mode .header, .view-mode .form-side { display: none !important; }
-        .view-mode { background: #f4f7f9; }
-        .view-mode .main-container { height: 100vh; display: flex !important; align-items: center; justify-content: center; padding: 10px; margin: 0; }
-        .view-mode .preview-side { width: 100%; max-width: 450px; padding: 0; display: flex; justify-content: center; }
-        .view-mode .phone-mockup { width: 100%; height: auto; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #ddd; position: relative; overflow: hidden; background: white; }
-
-
         .add-btn { width: calc(100% - 80px); margin: 0 40px 35px; padding: 16px; background: #265DF5; color: white; border: none; font-weight: 700; cursor: pointer; border-radius: 100px; font-size: 1rem; position: relative; z-index: 2; }
 
         .qr-view-container { padding: 20px 40px 40px; text-align: center; display: none; position: relative; z-index: 2; }
         .qr-border-frame { display: inline-block; padding: 15px; border: 2px solid var(--qr-stroke); border-radius: 20px; background: white; margin-bottom: 30px; }
         
-        /* Fix for double QR code */
         #qr-canvas { display: flex; justify-content: center; align-items: center; }
-        #qr-canvas img { display: none !important; } /* Hide the duplicate image tag */
+        #qr-canvas img { display: none !important; } 
         #qr-canvas canvas { display: block !important; margin: 0 auto; }
 
         .nav-btn { width: 100%; padding: 14px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; }
@@ -99,9 +88,36 @@ padding here */
         .dropdown-content button { padding: 12px; border: none; background: none; text-align: left; cursor: pointer; border-bottom: 1px solid #eee; width: 100%; font-size: 0.9rem; }
         .dropdown-content.active { display: flex; }
 
-        .view-mode .header, .view-mode .form-side { display: none; }
-        .view-mode .main-container { justify-content: center; height: 100vh; padding: 0; margin: 0; max-width: 100%; }
-        .view-mode .phone-mockup { position: relative; top: 0; box-shadow: none; border: none; height: 100vh; width: 100%; max-width: 500px; border-radius: 0; }
+        /* VIEW MODE - FLOATING CARD FIX */
+        .view-mode .header, .view-mode .form-side { display: none !important; }
+        .view-mode .main-container { 
+            justify-content: center; 
+            align-items: flex-start; /* Start from top to allow top/bottom padding */
+            height: auto; 
+            min-height: 100vh; 
+            padding: 40px 15px; /* Creates the space above and below the card */
+            margin: 0; 
+            max-width: 100%; 
+            background: var(--bg-gray);
+        }
+        .view-mode .preview-side { 
+            flex: none; 
+            width: 100%; 
+            max-width: 380px; 
+            padding: 0; 
+            display: flex; 
+            justify-content: center; 
+        }
+        .view-mode .phone-mockup { 
+            position: relative; 
+            top: 0; 
+            width: 100%; 
+            height: auto; 
+            border-radius: 35px; /* Rounded corners for the floating look */
+            box-shadow: 0 15px 45px rgba(0,0,0,0.1); 
+            border: 1px solid #E7E7F1; 
+            overflow: hidden; 
+        }
     </style>
 </head>
 <body>
@@ -350,8 +366,6 @@ padding here */
         currentFinalUrl = window.location.origin + window.location.pathname + "?" + params.toString();
         
         const qrBox = document.getElementById('qr-canvas');
-        
-        // FIX: Clear existing QR code before generating new one
         qrBox.innerHTML = "";
         
         new QRCode(qrBox, { 
