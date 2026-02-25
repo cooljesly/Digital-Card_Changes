@@ -41,22 +41,11 @@
 
         /* Mockup Design */
         .preview-side { flex: 0.8; display: flex; justify-content: center; align-items: flex-start; padding-top: 20px; }
-        .phone-mockup { 
-            width: 380px; 
-            background-color: white;
-            /* iPhone-Friendly Gradient Fix */
-            background-image: radial-gradient(circle at 0% 50%, var(--brand-fill) 0%, transparent 50%), 
-                              radial-gradient(circle at 100% 50%, var(--brand-fill) 0%, transparent 50%);
-            border-radius: 40px; 
-            box-shadow: 0 20px 60px rgba(0,0,0,0.12); 
-            overflow: hidden; 
-            position: sticky; 
-            top: 20px; 
-            border: 1px solid #E7E7F1; 
-            z-index: 1; 
-        }
+        .phone-mockup { width: 380px; background: white; border-radius: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.12); overflow: hidden; position: sticky; top: 20px; border: 1px solid #E7E7F1; z-index: 1; }
 
-        .phone-mockup.qr-mode { background-image: none !important; }
+        .phone-mockup::before, .phone-mockup::after { content: ''; position: absolute; top: 50%; width: 260px; height: 90%; transform: translateY(-50%); border-radius: 50%; filter: blur(55px); opacity: 0.6; z-index: 0; pointer-events: none; background: var(--brand-fill); transition: background 0.3s ease; }
+        .phone-mockup::before { left: -180px; } .phone-mockup::after { right: -180px; }
+        .phone-mockup.qr-mode::before, .phone-mockup.qr-mode::after { display: none; }
 
         .infoedge-tag-header { width: 90px; height: 35px; background: #F7F7F9; margin: 0 auto; border-radius: 0 0 10px 10px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2; }
         .infoedge-tag-header img { height: 14px; }
@@ -87,6 +76,7 @@
         .qr-border-frame { display: inline-block; padding: 15px; border: 2px solid var(--qr-stroke); border-radius: 20px; background: white; margin-bottom: 30px; }
         
         #qr-canvas { display: flex; justify-content: center; align-items: center; min-height: 180px; }
+        #qr-canvas img, #qr-canvas svg { display: none !important; } 
         #qr-canvas canvas { display: block !important; margin: 0 auto; width: 180px !important; height: 180px !important; }
 
         .nav-btn { width: 100%; padding: 14px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; }
@@ -98,18 +88,19 @@
         .dropdown-content button { padding: 12px; border: none; background: none; text-align: left; cursor: pointer; border-bottom: 1px solid #eee; width: 100%; font-size: 0.9rem; }
         .dropdown-content.active { display: flex; }
 
-        /* VIEW MODE - CENTERED FLOATING CARD */
+        /* VIEW MODE - CENTERED WITH PADDING */
         .view-mode .header, .view-mode .form-side { display: none !important; }
         .view-mode .main-container { 
             display: flex;
             justify-content: center; 
             align-items: center; 
-            height: 100vh; 
-            min-height: 600px;
-            padding: 20px 30px; /* Increased side padding for center look */
+            height: auto; 
+            min-height: 100vh; 
+            padding: 40px 20px; /* Side pixels to avoid touching edges */
             margin: 0; 
             max-width: 100%; 
             background: var(--bg-gray);
+            box-sizing: border-box;
         }
         .view-mode .preview-side { 
             flex: none; 
@@ -123,9 +114,8 @@
             position: relative; 
             top: 0; 
             width: 100%; 
-            max-width: 380px;
             height: auto; 
-            border-radius: 35px;
+            border-radius: 35px; 
             box-shadow: 0 15px 45px rgba(0,0,0,0.1); 
             border: 1px solid #E7E7F1; 
             overflow: hidden; 
@@ -386,6 +376,7 @@
             height: 180, 
             colorDark : COLOR_MAP[brand].color,
             colorLight : "#ffffff",
+            useSVG: false, // Ensures canvas is used for html2canvas compatibility
             correctLevel : QRCode.CorrectLevel.H
         });
     }
@@ -420,17 +411,16 @@
 
     function downloadImage() {
         const area = document.getElementById('capture-area');
-        // Ensure UI is ready
         setTimeout(() => {
             html2canvas(area, { 
                 useCORS: true, 
-                scale: 3, // Higher resolution for clarity
+                scale: 3,
                 backgroundColor: "#ffffff",
                 logging: false,
                 onclone: (clonedDoc) => {
                     // Force the QR canvas to be visible in the clone
-                    const qr = clonedDoc.getElementById('qr-canvas').querySelector('canvas');
-                    if(qr) qr.style.display = "block";
+                    const qrCanvas = clonedDoc.querySelector('#qr-canvas canvas');
+                    if (qrCanvas) qrCanvas.style.display = 'block';
                 }
             }).then(canvas => {
                 const link = document.createElement('a');
@@ -438,7 +428,7 @@
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             });
-        }, 800); 
+        }, 500); 
     }
 
     function toggleShareDropdown() { document.getElementById('share-dropdown').classList.toggle('active'); }
