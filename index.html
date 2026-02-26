@@ -90,10 +90,10 @@
         .view-mode .header, .view-mode .form-side { display: none !important; }
         .view-mode .main-container { 
             justify-content: center; 
-            align-items: flex-start; /* Start from top to allow top/bottom padding */
+            align-items: flex-start; 
             height: auto; 
             min-height: 100vh; 
-            padding: 40px 15px; /* Creates the space above and below the card */
+            padding: 40px 15px; 
             margin: 0; 
             max-width: 100%; 
             background: var(--bg-gray);
@@ -111,7 +111,7 @@
             top: 0; 
             width: 100%; 
             height: auto; 
-            border-radius: 35px; /* Rounded corners for the floating look */
+            border-radius: 35px; 
             box-shadow: 0 15px 45px rgba(0,0,0,0.1); 
             border: 1px solid #E7E7F1; 
             overflow: hidden; 
@@ -363,7 +363,8 @@
         const qrBox = document.getElementById('qr-canvas');
         qrBox.innerHTML = "";
         
-        new QRCode(qrBox, { 
+        // 1. Create the QR Code
+        const qr = new QRCode(qrBox, { 
             text: currentFinalUrl, 
             width: 180, 
             height: 180, 
@@ -371,6 +372,15 @@
             colorLight : "#ffffff",
             correctLevel : QRCode.CorrectLevel.H
         });
+
+        // 2. CRITICAL FIX: Convert the Canvas to a static Image for html2canvas
+        setTimeout(() => {
+            const canvas = qrBox.querySelector('canvas');
+            if (canvas) {
+                const imgData = canvas.toDataURL("image/png");
+                qrBox.innerHTML = `<img src="${imgData}" style="width:180px; height:180px;">`;
+            }
+        }, 100);
     }
 
     function downloadVCF() {
@@ -403,12 +413,18 @@
 
     function downloadImage() {
         const area = document.getElementById('capture-area');
+        
+        // Ensure the QR is updated and rendered before capturing
+        updateQR();
+
         setTimeout(() => {
             html2canvas(area, { 
                 useCORS: true, 
-                scale: 3,
+                scale: 3, // High quality
                 backgroundColor: "#ffffff",
-                logging: false
+                logging: false,
+                letterRendering: true,
+                allowTaint: false
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = 'DigitalCard_QR.png';
