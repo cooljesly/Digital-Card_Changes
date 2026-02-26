@@ -434,11 +434,7 @@
     const mockup = document.getElementById("capture-area");
     const brand = document.getElementById('in-brand').value;
 
-    // Store previous state
-    const prevVC = document.getElementById("vc-view").style.display;
-    const prevQR = document.getElementById("qr-view").style.display;
-
-    // Force QR mode
+    // Switch to QR mode
     document.getElementById("vc-view").style.display = "none";
     document.getElementById("qr-view").style.display = "block";
     mockup.classList.add("qr-mode");
@@ -446,26 +442,53 @@
     document.getElementById('brand-marquee').style.display = "none";
     document.getElementById('brand-tag').style.display = "none";
 
-    document.getElementById('display-logo').src = COLOR_MAP[brand].logo;
-
     updateQR();
 
-    await new Promise(resolve => setTimeout(resolve, 600));
+    // 🔥 Wait longer to ensure full paint
+    await new Promise(resolve => setTimeout(resolve, 800));
 
+    // 🔥 Force QR canvas repaint
+    const qrCanvas = document.querySelector("#qr-canvas canvas");
+    if (!qrCanvas) {
+        alert("QR not rendered yet.");
+        return;
+    }
+
+    // Clone QR canvas as image
+    const qrImage = new Image();
+    qrImage.src = qrCanvas.toDataURL("image/png");
+
+    await new Promise(resolve => {
+        qrImage.onload = resolve;
+    });
+
+    // Capture entire mockup
     const canvas = await html2canvas(mockup, {
         scale: 3,
-        useCORS: true,
-        backgroundColor: "#ffffff"
+        backgroundColor: "#ffffff",
+        useCORS: true
     });
+
+    // 🔥 Overlay QR again manually (GUARANTEED)
+    const ctx = canvas.getContext("2d");
+
+    const qrRect = qrCanvas.getBoundingClientRect();
+    const mockRect = mockup.getBoundingClientRect();
+
+    const x = (qrRect.left - mockRect.left) * 3;
+    const y = (qrRect.top - mockRect.top) * 3;
+    const size = qrCanvas.width * 3;
+
+    ctx.drawImage(qrImage, x, y, size, size);
 
     const link = document.createElement("a");
     link.download = "DigitalCard_QR.png";
     link.href = canvas.toDataURL("image/png");
     link.click();
 
-    // 🔥 Restore original UI state
-    document.getElementById("vc-view").style.display = prevVC;
-    document.getElementById("qr-view").style.display = prevQR;
+    // Restore UI
+    document.getElementById("vc-view").style.display = "block";
+    document.getElementById("qr-view").style.display = "none";
     mockup.classList.remove("qr-mode");
 
     updateBrand(brand);
