@@ -357,25 +357,28 @@
 
     if (!qrBox) return;
 
+    // Build URL
     const params = new URLSearchParams();
     params.set('brand', brand);
 
-    fields.forEach(f => {
-        const el = document.getElementById('in-' + f);
-        if (el) {
-            params.set(f.charAt(0), el.value || '');
-        }
-    });
+    const name = document.getElementById('in-name').value || '';
+    const title = document.getElementById('in-title').value || '';
+    const phone = document.getElementById('in-phone').value || '';
+    const email = document.getElementById('in-email').value || '';
+    const web = document.getElementById('in-web').value || '';
+    const loc = document.getElementById('in-loc').value || '';
+    const img = document.getElementById('in-img').value || '';
+    const btn = document.getElementById('toggle-save').checked ? '1' : '0';
 
-    const imgField = document.getElementById('in-img');
-    if (imgField) {
-        params.set('i', imgField.value || '');
-    }
+    if (name) params.set('n', name);
+    if (title) params.set('t', title);
+    if (phone) params.set('p', phone);
+    if (email) params.set('e', email);
+    if (web) params.set('w', web);
+    if (loc) params.set('l', loc);
+    if (img) params.set('i', img);
+    params.set('b', btn);
 
-    const toggle = document.getElementById('toggle-save');
-    params.set('b', toggle && toggle.checked ? '1' : '0');
-
-    // Build final URL safely
     currentFinalUrl =
         window.location.origin +
         window.location.pathname +
@@ -385,15 +388,17 @@
     // Clear old QR
     qrBox.innerHTML = "";
 
-    // Generate new QR
-    new QRCode(qrBox, {
-        text: currentFinalUrl,
-        width: 180,
-        height: 180,
-        colorDark: COLOR_MAP[brand]?.color || "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H
-    });
+    // Force repaint fix (important)
+    setTimeout(() => {
+        new QRCode(qrBox, {
+            text: currentFinalUrl,
+            width: 180,
+            height: 180,
+            colorDark: COLOR_MAP[brand].color,
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    }, 10);
 }
 
     function downloadVCF() {
