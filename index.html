@@ -361,31 +361,38 @@
         currentFinalUrl = window.location.origin + window.location.pathname + "?" + params.toString();
         
         const qrBox = document.getElementById('qr-canvas');
-        qrBox.innerHTML = ""; 
-
-        // Generate high-res in a temp div
-        const temp = document.createElement('div');
-        new QRCode(temp, { 
+        
+        // 1. Create a temporary container that is NOT in the mockup
+        const tempContainer = document.createElement('div');
+        
+        const qr = new QRCode(tempContainer, { 
             text: currentFinalUrl, 
-            width: 400, // Higher resolution for capture
-            height: 400, 
+            width: 300, 
+            height: 300, 
             colorDark : COLOR_MAP[brand].color,
             colorLight : "#ffffff",
             correctLevel : QRCode.CorrectLevel.H
         });
 
+        // 2. Give the library a moment to draw, then grab the image
         setTimeout(() => {
-            const canvas = temp.querySelector('canvas');
-            if(canvas) {
-                const img = new Image();
-                img.id = "final-qr-image";
-                img.src = canvas.toDataURL("image/png");
-                img.style.width = "180px";
-                img.style.height = "180px";
-                img.style.display = "inline-block";
-                qrBox.appendChild(img);
+            const canvas = tempContainer.querySelector('canvas');
+            if (canvas) {
+                const dataUrl = canvas.toDataURL("image/png");
+                // 3. Set the QR as a Background Image (html2canvas handles this better than tags sometimes)
+                qrBox.innerHTML = ""; // Clear "Generating..."
+                qrBox.style.backgroundImage = `url(${dataUrl})`;
+                qrBox.style.backgroundSize = "contain";
+                qrBox.style.backgroundRepeat = "no-repeat";
+                qrBox.style.backgroundPosition = "center";
+                qrBox.style.width = "180px";
+                qrBox.style.height = "180px";
+                qrBox.style.display = "block";
+                qrBox.style.margin = "0 auto";
+                // Add a hidden img tag just in case
+                qrBox.innerHTML = `<img src="${dataUrl}" style="opacity:0; width:100%; height:100%;">`;
             }
-        }, 150);
+        }, 200);
     }
 
     function downloadVCF() {
@@ -416,47 +423,35 @@
         a.click();
     }
 
-    // THE ULTIMATE FIX: Wait for ALL images in the container to load before capturing
     async function downloadImage() {
         const area = document.getElementById('capture-area');
-        const images = area.getElementsByTagName('img');
         
-        // Function to check if an image is loaded
-        const loadImage = (img) => {
-            return new Promise((resolve) => {
-                if (img.complete && img.naturalHeight !== 0) resolve();
-                else {
-                    img.onload = () => resolve();
-                    img.onerror = () => resolve(); // Resolve anyway to avoid hanging
-                }
-            });
-        };
+        // Ensure we are catching the absolute latest state
+        window.scrollTo(0,0); 
 
-        // Wait for all images (logo, QR, etc) to be ready
-        await Promise.all(Array.from(images).map(loadImage));
-
-        // Extra buffer for browser to paint
-        setTimeout(() => {
-            html2canvas(area, { 
-                useCORS: true, 
-                scale: 3,
-                backgroundColor: "#ffffff",
-                logging: false,
-                onclone: (clonedDoc) => {
-                    // Force the QR to be visible in the clone
-                    const clonedQR = clonedDoc.getElementById('final-qr-image');
-                    if (clonedQR) clonedQR.style.display = 'inline-block';
-                }
-            }).then(canvas => {
+        html2canvas(area, { 
+            useCORS: true,
+            allowTaint: true, // Allow the script to try and capture even if it thinks it's "dirty"
+            scale: 2,
+            backgroundColor: "#ffffff",
+            logging: true, // Check your F12 console to see if errors appear here
+            width: area.offsetWidth,
+            height: area.offsetHeight
+        }).then(canvas => {
+            try {
                 const link = document.createElement('a');
-                const name = document.getElementById('in-name').value || "DigitalCard";
-                link.download = `${name.replace(/\s+/g, '_')}_QR.png`;
+                link.download = 'DigitalCard_QR.png';
                 link.href = canvas.toDataURL('image/png');
+                document.body.appendChild(link);
                 link.click();
-            });
-        }, 200);
+                document.body.removeChild(link);
+            } catch (e) {
+                console.error("Export failed", e);
+                alert("Export failed. Try a different browser or check console.");
+            }
+        });
     }
-
+    
     function toggleShareDropdown() { document.getElementById('share-dropdown').classList.toggle('active'); }
     function triggerShare(p) {
         const text = `Connect with me: ${currentFinalUrl}`;
