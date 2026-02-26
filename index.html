@@ -413,82 +413,43 @@
         a.click();
     }
 
-    function downloadImage() {
+    async function downloadImage() {
 
     if (!currentFinalUrl) {
         alert("Please generate the card first.");
         return;
     }
 
-    const brand = document.getElementById('in-brand').value;
-    const brandData = COLOR_MAP[brand];
-    const name = document.getElementById('in-name').value || "Name";
-    const title = document.getElementById('in-title').value || "Job Title";
+    const captureArea = document.getElementById("capture-area");
+    const originalStep = document.querySelector(".step.active").id;
 
-    // Create Export Canvas
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
+    // Force QR mode view
+    document.getElementById("vc-view").style.display = "none";
+    document.getElementById("qr-view").style.display = "block";
+    captureArea.classList.add("qr-mode");
 
-    canvas.width = 1080;
-    canvas.height = 1600;
+    // Small wait to ensure QR renders
+    await new Promise(resolve => setTimeout(resolve, 300));
 
-    // White background
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Brand header
-    ctx.fillStyle = brandData.fill;
-    ctx.fillRect(0, 0, canvas.width, 300);
-
-    ctx.fillStyle = brandData.color;
-    ctx.fillRect(0, 290, canvas.width, 10);
-
-    // Create QR container
-    const qrContainer = document.createElement("div");
-
-    new QRCode(qrContainer, {
-        text: currentFinalUrl,
-        width: 800,
-        height: 800,
-        colorDark: brandData.color,
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H
+    // Capture EXACT preview
+    const canvas = await html2canvas(captureArea, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: null
     });
 
-    // Wait until QR is actually rendered
-    const checkQR = setInterval(() => {
+    // Restore original step
+    if (originalStep === "step1") {
+        document.getElementById("vc-view").style.display = "block";
+        document.getElementById("qr-view").style.display = "none";
+        captureArea.classList.remove("qr-mode");
+    }
 
-        const qrCanvas = qrContainer.querySelector("canvas");
-        const qrImg = qrContainer.querySelector("img");
-
-        if (qrCanvas || qrImg) {
-
-            clearInterval(checkQR);
-
-            const qrElement = qrCanvas || qrImg;
-
-            // Draw QR
-            ctx.drawImage(qrElement, 140, 350, 800, 800);
-
-            // Draw Name
-            ctx.fillStyle = brandData.color;
-            ctx.font = "bold 80px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText(name, canvas.width / 2, 1250);
-
-            // Draw Title
-            ctx.fillStyle = "#333";
-            ctx.font = "55px Arial";
-            ctx.fillText(title, canvas.width / 2, 1350);
-
-            // Download
-            const link = document.createElement("a");
-            link.download = "DigitalCard_QR.png";
-            link.href = canvas.toDataURL("image/png");
-            link.click();
-        }
-
-    }, 50);
+    // Download image
+    const link = document.createElement("a");
+    link.download = "DigitalCard_QR.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
 }
     
     function toggleShareDropdown() { document.getElementById('share-dropdown').classList.toggle('active'); }
