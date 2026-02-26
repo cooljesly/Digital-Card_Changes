@@ -439,40 +439,27 @@
     const mockup = document.getElementById("capture-area");
     const brand = document.getElementById('in-brand').value;
 
-    // Save current state
-    const activeStep = document.querySelector(".step.active").id;
-
-    // FORCE QR MODE PROPERLY
+    // Force QR mode
     document.getElementById("vc-view").style.display = "none";
     document.getElementById("qr-view").style.display = "block";
     mockup.classList.add("qr-mode");
 
-    // Hide marquee in QR mode
     document.getElementById('brand-marquee').style.display = "none";
     document.getElementById('brand-tag').style.display = "none";
 
-    // Make sure brand header logo is correct
     document.getElementById('display-logo').src = COLOR_MAP[brand].logo;
 
-    // 🔥 Regenerate QR fresh before capture
+    // Regenerate QR clean
     updateQR();
 
     // Wait for QR render
-    await new Promise(resolve => setTimeout(resolve, 400));
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     const canvas = await html2canvas(mockup, {
         scale: 3,
         useCORS: true,
-        backgroundColor: null
+        backgroundColor: "#ffffff"   // 🔥 THIS FIXES YOUR ISSUE
     });
-
-    // Restore original UI state
-    if (activeStep === "step1") {
-        document.getElementById("vc-view").style.display = "block";
-        document.getElementById("qr-view").style.display = "none";
-        mockup.classList.remove("qr-mode");
-        updateBrand(brand);
-    }
 
     const link = document.createElement("a");
     link.download = "DigitalCard_QR.png";
