@@ -361,28 +361,37 @@
         currentFinalUrl = window.location.origin + window.location.pathname + "?" + params.toString();
         
         const qrBox = document.getElementById('qr-canvas');
-        qrBox.innerHTML = "";
+        qrBox.innerHTML = ""; // Clear previous
         
-        // 1. Create the QR Code
-        const qr = new QRCode(qrBox, { 
+        // 1. Create a hidden container for the initial generation
+        const tempDiv = document.createElement('div');
+        
+        new QRCode(tempDiv, { 
             text: currentFinalUrl, 
-            width: 180, 
-            height: 180, 
+            width: 256, // Higher res for better capture
+            height: 256, 
             colorDark : COLOR_MAP[brand].color,
             colorLight : "#ffffff",
             correctLevel : QRCode.CorrectLevel.H
         });
 
-        // 2. CRITICAL FIX: Convert the Canvas to a static Image for html2canvas
+        // 2. Wait for the library to render, then extract the image data
         setTimeout(() => {
-            const canvas = qrBox.querySelector('canvas');
-            if (canvas) {
-                const imgData = canvas.toDataURL("image/png");
-                qrBox.innerHTML = `<img src="${imgData}" style="width:180px; height:180px;">`;
+            let qrSource = tempDiv.querySelector('canvas');
+            let dataUrl;
+            
+            if (qrSource) {
+                dataUrl = qrSource.toDataURL("image/png");
+            } else {
+                // Fallback for some browsers where qrcode.js only makes an img
+                dataUrl = tempDiv.querySelector('img').src;
             }
-        }, 100);
-    }
 
+            // 3. Inject a standard, clean <img> tag into the visible area
+            qrBox.innerHTML = `<img src="${dataUrl}" id="final-qr-img" style="width:180px; height:180px; display:block;">`;
+        }, 50);
+    }
+    
     function downloadVCF() {
         const isViewMode = document.body.classList.contains('view-mode');
         const n = isViewMode ? document.getElementById('out-name').innerText : document.getElementById('in-name').value || "Contact";
@@ -412,26 +421,26 @@
     }
 
     function downloadImage() {
+        // Ensure we are on Step 2 view
         const area = document.getElementById('capture-area');
         
-        // Ensure the QR is updated and rendered before capturing
-        updateQR();
-
+        // Use a longer timeout to ensure the Image object is fully decoded by the browser
         setTimeout(() => {
             html2canvas(area, { 
                 useCORS: true, 
-                scale: 3, // High quality
+                scale: 3, 
                 backgroundColor: "#ffffff",
                 logging: false,
-                letterRendering: true,
+                // Force html2canvas to wait for images to load
                 allowTaint: false
             }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = 'DigitalCard_QR.png';
+                const name = document.getElementById('in-name').value || "DigitalCard";
+                link.download = `${name.replace(/\s+/g, '_')}_QR.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             });
-        }, 500); 
+        }, 600); 
     }
 
     function toggleShareDropdown() { document.getElementById('share-dropdown').classList.toggle('active'); }
