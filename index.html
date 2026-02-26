@@ -350,7 +350,6 @@
         updateBrand(document.getElementById('in-brand').value);
     }
 
-    // UPDATED: Robust QR generation that ensures a capture-friendly image
     function updateQR() {
         const brand = document.getElementById('in-brand').value;
         const params = new URLSearchParams();
@@ -364,29 +363,29 @@
         const qrBox = document.getElementById('qr-canvas');
         qrBox.innerHTML = ""; 
 
-        // Generate in a hidden div first
+        // Generate high-res in a temp div
         const temp = document.createElement('div');
         new QRCode(temp, { 
             text: currentFinalUrl, 
-            width: 256, 
-            height: 256, 
+            width: 400, // Higher resolution for capture
+            height: 400, 
             colorDark : COLOR_MAP[brand].color,
             colorLight : "#ffffff",
             correctLevel : QRCode.CorrectLevel.H
         });
 
-        // Use a small delay to ensure the library has finished its internal canvas drawing
         setTimeout(() => {
             const canvas = temp.querySelector('canvas');
             if(canvas) {
-                const img = document.createElement('img');
+                const img = new Image();
+                img.id = "final-qr-image";
                 img.src = canvas.toDataURL("image/png");
                 img.style.width = "180px";
                 img.style.height = "180px";
-                img.id = "final-static-qr";
+                img.style.display = "inline-block";
                 qrBox.appendChild(img);
             }
-        }, 100);
+        }, 150);
     }
 
     function downloadVCF() {
@@ -417,33 +416,45 @@
         a.click();
     }
 
-    // UPDATED: Uses a promise to ensure the QR image is "decoding" before capture
+    // THE ULTIMATE FIX: Wait for ALL images in the container to load before capturing
     async function downloadImage() {
         const area = document.getElementById('capture-area');
-        const qrImg = document.getElementById('final-static-qr');
+        const images = area.getElementsByTagName('img');
+        
+        // Function to check if an image is loaded
+        const loadImage = (img) => {
+            return new Promise((resolve) => {
+                if (img.complete && img.naturalHeight !== 0) resolve();
+                else {
+                    img.onload = () => resolve();
+                    img.onerror = () => resolve(); // Resolve anyway to avoid hanging
+                }
+            });
+        };
 
-        if (!qrImg) {
-            alert("QR Code still loading, please try again in a second.");
-            return;
-        }
+        // Wait for all images (logo, QR, etc) to be ready
+        await Promise.all(Array.from(images).map(loadImage));
 
-        // Wait for image to be fully ready in browser memory
-        await new Promise(resolve => {
-            if (qrImg.complete) resolve();
-            else qrImg.onload = resolve;
-        });
-
-        html2canvas(area, { 
-            useCORS: true, 
-            scale: 3,
-            backgroundColor: "#ffffff",
-            logging: false
-        }).then(canvas => {
-            const link = document.createElement('a');
-            link.download = 'DigitalCard_QR.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-        });
+        // Extra buffer for browser to paint
+        setTimeout(() => {
+            html2canvas(area, { 
+                useCORS: true, 
+                scale: 3,
+                backgroundColor: "#ffffff",
+                logging: false,
+                onclone: (clonedDoc) => {
+                    // Force the QR to be visible in the clone
+                    const clonedQR = clonedDoc.getElementById('final-qr-image');
+                    if (clonedQR) clonedQR.style.display = 'inline-block';
+                }
+            }).then(canvas => {
+                const link = document.createElement('a');
+                const name = document.getElementById('in-name').value || "DigitalCard";
+                link.download = `${name.replace(/\s+/g, '_')}_QR.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }, 200);
     }
 
     function toggleShareDropdown() { document.getElementById('share-dropdown').classList.toggle('active'); }
