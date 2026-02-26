@@ -439,6 +439,10 @@
     const mockup = document.getElementById("capture-area");
     const brand = document.getElementById('in-brand').value;
 
+    // Store previous state
+    const prevVC = document.getElementById("vc-view").style.display;
+    const prevQR = document.getElementById("qr-view").style.display;
+
     // Force QR mode
     document.getElementById("vc-view").style.display = "none";
     document.getElementById("qr-view").style.display = "block";
@@ -449,22 +453,27 @@
 
     document.getElementById('display-logo').src = COLOR_MAP[brand].logo;
 
-    // Regenerate QR clean
     updateQR();
 
-    // Wait for QR render
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 600));
 
     const canvas = await html2canvas(mockup, {
         scale: 3,
         useCORS: true,
-        backgroundColor: "#ffffff"   // 🔥 THIS FIXES YOUR ISSUE
+        backgroundColor: "#ffffff"
     });
 
     const link = document.createElement("a");
     link.download = "DigitalCard_QR.png";
     link.href = canvas.toDataURL("image/png");
     link.click();
+
+    // 🔥 Restore original UI state
+    document.getElementById("vc-view").style.display = prevVC;
+    document.getElementById("qr-view").style.display = prevQR;
+    mockup.classList.remove("qr-mode");
+
+    updateBrand(brand);
 }
     
     function toggleShareDropdown() { document.getElementById('share-dropdown').classList.toggle('active'); }
