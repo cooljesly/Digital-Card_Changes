@@ -353,33 +353,44 @@
     function updateQR() {
 
     const brand = document.getElementById('in-brand').value;
+    const qrBox = document.getElementById('qr-canvas');
+
+    if (!qrBox) return;
 
     const params = new URLSearchParams();
     params.set('brand', brand);
 
     fields.forEach(f => {
-        params.set(f.charAt(0), document.getElementById('in-' + f).value);
+        const el = document.getElementById('in-' + f);
+        if (el) {
+            params.set(f.charAt(0), el.value || '');
+        }
     });
 
-    params.set('i', document.getElementById('in-img').value);
-    params.set('b', document.getElementById('toggle-save').checked ? '1' : '0');
+    const imgField = document.getElementById('in-img');
+    if (imgField) {
+        params.set('i', imgField.value || '');
+    }
 
-    // ✅ VERY IMPORTANT: Set currentFinalUrl
-    currentFinalUrl = window.location.origin + 
-                      window.location.pathname + 
-                      "?" + params.toString();
+    const toggle = document.getElementById('toggle-save');
+    params.set('b', toggle && toggle.checked ? '1' : '0');
 
-    const qrBox = document.getElementById('qr-canvas');
+    // Build final URL safely
+    currentFinalUrl =
+        window.location.origin +
+        window.location.pathname +
+        "?" +
+        params.toString();
 
     // Clear old QR
     qrBox.innerHTML = "";
 
-    // Render QR directly inside visible container
+    // Generate new QR
     new QRCode(qrBox, {
         text: currentFinalUrl,
         width: 180,
         height: 180,
-        colorDark: COLOR_MAP[brand].color,
+        colorDark: COLOR_MAP[brand]?.color || "#000000",
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.H
     });
@@ -420,32 +431,44 @@
         return;
     }
 
-    const captureArea = document.getElementById("capture-area");
-    const originalStep = document.querySelector(".step.active").id;
+    const mockup = document.getElementById("capture-area");
+    const brand = document.getElementById('in-brand').value;
 
-    // Force QR mode view
+    // Save current state
+    const activeStep = document.querySelector(".step.active").id;
+
+    // FORCE QR MODE PROPERLY
     document.getElementById("vc-view").style.display = "none";
     document.getElementById("qr-view").style.display = "block";
-    captureArea.classList.add("qr-mode");
+    mockup.classList.add("qr-mode");
 
-    // Small wait to ensure QR renders
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Hide marquee in QR mode
+    document.getElementById('brand-marquee').style.display = "none";
+    document.getElementById('brand-tag').style.display = "none";
 
-    // Capture EXACT preview
-    const canvas = await html2canvas(captureArea, {
+    // Make sure brand header logo is correct
+    document.getElementById('display-logo').src = COLOR_MAP[brand].logo;
+
+    // 🔥 Regenerate QR fresh before capture
+    updateQR();
+
+    // Wait for QR render
+    await new Promise(resolve => setTimeout(resolve, 400));
+
+    const canvas = await html2canvas(mockup, {
         scale: 3,
         useCORS: true,
         backgroundColor: null
     });
 
-    // Restore original step
-    if (originalStep === "step1") {
+    // Restore original UI state
+    if (activeStep === "step1") {
         document.getElementById("vc-view").style.display = "block";
         document.getElementById("qr-view").style.display = "none";
-        captureArea.classList.remove("qr-mode");
+        mockup.classList.remove("qr-mode");
+        updateBrand(brand);
     }
 
-    // Download image
     const link = document.createElement("a");
     link.download = "DigitalCard_QR.png";
     link.href = canvas.toDataURL("image/png");
