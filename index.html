@@ -350,28 +350,69 @@
         updateBrand(document.getElementById('in-brand').value);
     }
 
-    function updateQR() {
-    const brand = document.getElementById('in-brand').value;
-    const params = new URLSearchParams();
-    params.set('brand', brand);
-    fields.forEach(f => params.set(f.charAt(0), document.getElementById('in-'+f).value));
-    params.set('i', document.getElementById('in-img').value);
-    params.set('b', document.getElementById('toggle-save').checked ? '1' : '0');
-    
-    currentFinalUrl = window.location.origin + window.location.pathname + "?" + params.toString();
-    
-    const qrBox = document.getElementById('qr-canvas');
-    qrBox.innerHTML = ""; // Clear previous QR
+    function downloadImage() {
 
-    // Create QR directly inside qrBox
-    const qr = new QRCode(qrBox, { 
-        text: currentFinalUrl, 
-        width: 180, 
-        height: 180, 
-        colorDark : COLOR_MAP[brand].color,
-        colorLight : "#ffffff",
-        correctLevel : QRCode.CorrectLevel.H
+    const brand = document.getElementById('in-brand').value;
+    const brandData = COLOR_MAP[brand];
+
+    const name = document.getElementById('in-name').value || "Name";
+    const title = document.getElementById('in-title').value || "Job Title";
+
+    // Create High Resolution Canvas
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = 1080;
+    canvas.height = 1920;
+
+    // White Background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Brand Top Section
+    ctx.fillStyle = brandData.fill;
+    ctx.fillRect(0, 0, canvas.width, 350);
+
+    // Draw Brand Accent Line
+    ctx.fillStyle = brandData.color;
+    ctx.fillRect(0, 340, canvas.width, 10);
+
+    // Generate QR in temporary container
+    const tempQR = document.createElement("div");
+    const qr = new QRCode(tempQR, {
+        text: currentFinalUrl,
+        width: 600,
+        height: 600,
+        colorDark: brandData.color,
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
     });
+
+    setTimeout(() => {
+
+        const qrCanvas = tempQR.querySelector("canvas");
+
+        // Draw QR centered
+        ctx.drawImage(qrCanvas, 240, 550, 600, 600);
+
+        // Draw Name
+        ctx.fillStyle = brandData.color;
+        ctx.font = "bold 90px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(name, canvas.width / 2, 1300);
+
+        // Draw Title
+        ctx.fillStyle = "#333333";
+        ctx.font = "60px Arial";
+        ctx.fillText(title, canvas.width / 2, 1400);
+
+        // Download Image
+        const link = document.createElement("a");
+        link.download = "DigitalCard_QR.png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+
+    }, 200);
 }
 
     function downloadVCF() {
@@ -403,23 +444,33 @@
     }
 
     async function downloadImage() {
-    const area = document.getElementById('capture-area');
+        const area = document.getElementById('capture-area');
+        
+        // Ensure we are catching the absolute latest state
+        window.scrollTo(0,0); 
 
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    html2canvas(area, { 
-        useCORS: true,
-        scale: 2,
-        backgroundColor: "#ffffff",
-        width: area.offsetWidth,
-        height: area.offsetHeight
-    }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = 'DigitalCard_QR.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-    });
-}
+        html2canvas(area, { 
+            useCORS: true,
+            allowTaint: true, // Allow the script to try and capture even if it thinks it's "dirty"
+            scale: 2,
+            backgroundColor: "#ffffff",
+            logging: true, // Check your F12 console to see if errors appear here
+            width: area.offsetWidth,
+            height: area.offsetHeight
+        }).then(canvas => {
+            try {
+                const link = document.createElement('a');
+                link.download = 'DigitalCard_QR.png';
+                link.href = canvas.toDataURL('image/png');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (e) {
+                console.error("Export failed", e);
+                alert("Export failed. Try a different browser or check console.");
+            }
+        });
+    }
     
     function toggleShareDropdown() { document.getElementById('share-dropdown').classList.toggle('active'); }
     function triggerShare(p) {
